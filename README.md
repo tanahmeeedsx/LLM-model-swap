@@ -89,6 +89,50 @@ The proposed architecture is:
 
 OmniRoute can be evaluated as the routing layer, while Ollama provides local model inference. Integration with the existing OmniRoute setup must be verified before confirming the complete architecture.
 
+## FastAPI Orchestration Service
+
+A FastAPI service provides a common HTTP interface for local Ollama models.
+
+### Start the API
+
+Activate the virtual environment and run:
+
+    source .venv/bin/activate
+    python -m uvicorn api:app --host 127.0.0.1 --port 8000
+
+Interactive API documentation: http://127.0.0.1:8000/docs
+
+### Available Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/health` | Check API health |
+| GET | `/models` | List available Ollama models |
+| POST | `/generate` | Generate a response using a selected model |
+
+### Test Model Switching
+
+Generate a response using Qwen:
+
+    curl -X POST http://127.0.0.1:8000/generate \
+      -H "Content-Type: application/json" \
+      -d '{"model":"qwen2.5:1.5b","prompt":"Explain Kubernetes in one sentence."}'
+
+Generate a response using Llama:
+
+    curl -X POST http://127.0.0.1:8000/generate \
+      -H "Content-Type: application/json" \
+      -d '{"model":"llama3.2","prompt":"Explain Docker in one sentence."}'
+
+### Validation Results
+
+- Tested both models using the Python CLI.
+- Verified custom prompts and environment-based model selection.
+- Tested API health and model-list endpoints.
+- Successfully generated responses from both models through FastAPI.
+
+The current API forwards requests to Ollama and allows the caller to select a model. OmniRoute integration, true hot-swapping, fallback, and load balancing remain future work.
+
 ## Remaining Work
 
 - Integrate Ollama with the existing OmniRoute setup.
