@@ -196,9 +196,52 @@ The final recommendation depends on validating the required OmniRoute integratio
 - A model could be unloaded without deleting its model files from disk.
 - The model lifecycle was verified using Ollama's process-status API.
 - This confirms sequential model loading and unloading, not zero-downtime hot-swapping.
-- Simultaneous multi-model serving, memory pressure, and request behavior during a model switch were not tested.
-- FastAPI model switching and end-to-end OmniRoute integration still require separate validation.
+- Concurrent requests were tested against the same Qwen model, but simultaneous multi-model serving and memory pressure were not tested.
+- FastAPI sequential model selection was verified separately. Zero-downtime hot-swapping and end-to-end OmniRoute integration remain unverified.
 
 ### Updated Evaluation Status
 
 Ollama has now been tested hands-on for CLI inference, model selection, FastAPI requests, and sequential model lifecycle operations. The evaluations of vLLM, LocalAI, and llama.cpp remain preliminary until equivalent hands-on tests are performed.
+
+## 10. FastAPI Orchestration and API Validation
+
+**Environment:** FastAPI on `127.0.0.1:8000`, backed by the existing Ollama service on port `11434`. Models tested: `qwen2.5:1.5b` and `llama3.2:latest`.
+
+### Test Results
+
+| Test | Result | Evidence |
+|---|---|---|
+| Health endpoint | PASS | `GET /health` returned HTTP 200 with service status `ok` |
+| Model listing | PASS | `GET /models` returned HTTP 200 and listed both models |
+| Qwen generation | PASS | Returned `QWEN_OK` and `SWITCH_QWEN_OK` |
+| Llama generation | PASS | Returned `LLAMA_OK` and `SWITCH_LLAMA_OK` |
+| Sequential model selection | PASS | Same `/generate` endpoint selected Qwen and Llama through the request `model` field |
+| Invalid model | PASS | Returned HTTP 404 for `nonexistent-model:latest` |
+| Empty prompt | PASS | Returned HTTP 422; minimum prompt length is enforced |
+| Missing prompt | PASS | Returned HTTP 422 because `prompt` is required |
+| Oversized prompt | PASS — Python-level validation | A 10,001-character prompt was rejected; maximum length is 10,000 |
+| Concurrent requests | PASS | Two concurrent Qwen requests returned `CONCURRENT_A_OK` and `CONCURRENT_B_OK` |
+| Malformed JSON | PASS | Returned HTTP 422 with a JSON decode error |
+| Ollama connection failure | PASS — mocked | Mocked `URLError` caused `list_models()` to raise HTTP 503 |
+| Temporary server cleanup | PASS | Server on port 8001 was stopped; main server on port 8000 remained running |
+
+### Findings and Limitations
+
+- Sequential model selection works without changing application code; the requested model is supplied in each request.
+- Concurrent requests were tested only with Qwen. Simultaneous serving of different models was not tested.
+- Oversized-prompt validation was tested directly against the Pydantic model, not through HTTP.
+- Connection-failure behavior was tested with a mocked Python call, not by taking the actual Ollama service offline.
+- An attempt to use FastAPI `TestClient` could not run because the installed Starlette test client requires `httpx2`. No dependency was installed; a mocked direct function call was used instead.
+- Invalid-model errors are returned as HTTP 404, but the current `detail` contains a JSON-encoded error string that could be formatted more cleanly.
+- Zero-downtime hot-swapping and end-to-end OmniRoute integration remain unverified.
+
+### Remaining Work
+
+- Confirm the team's exact OmniRoute repository and configuration.
+- Test end-to-end requests through OmniRoute.
+- Investigate aliases, fallback, load balancing, and service restart requirements.
+- If hardware permits, test simultaneous different-model serving and record memory and latency.
+
+### Validation Conclusion
+
+The Ollama baseline and FastAPI model-selection path were exercised with both available local models. Basic request validation, invalid-model handling, concurrent same-model requests, and simulated connection failure were also checked. These tests do not prove zero-downtime hot-swapping, simultaneous multi-model serving, or completed OmniRoute integration.
