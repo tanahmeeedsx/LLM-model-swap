@@ -171,3 +171,34 @@ No tool should be selected solely from the preliminary scores. The final decisio
 Ollama currently provides the simplest working baseline for local model selection in this project. LocalAI and llama.cpp deserve further investigation for broader backend support and dynamic model management, while vLLM is a candidate for performance-oriented serving.
 
 The final recommendation depends on validating the required OmniRoute integration and the Docker-like model-swapping behavior against the DEV-875 acceptance criteria.
+
+## 9. Hands-on Validation: Ollama Model Lifecycle
+
+**Environment:** Existing Ollama Docker container with `qwen2.5:1.5b` and `llama3.2:latest`.
+
+### Test Results
+
+| Test | Result | Evidence |
+|---|---|---|
+| List locally available models | PASS | `docker exec ollama ollama list` showed both models |
+| Generate a response with Qwen | PASS | Returned `QWEN_OK` |
+| Verify Qwen is loaded | PASS | `GET /api/ps` listed `qwen2.5:1.5b` |
+| Unload Qwen | PASS | Generate API returned `done_reason: unload` |
+| Verify Qwen is unloaded | PASS | `GET /api/ps` returned an empty models list |
+| Generate a response with Llama | PASS | Returned `LLAMA_OK` |
+| Verify Llama is loaded | PASS | `GET /api/ps` listed `llama3.2:latest` |
+| Unload Llama | PASS | Generate API returned `done_reason: unload` |
+| Verify final cleanup | PASS | `GET /api/ps` returned an empty models list |
+
+### Findings and Limitations
+
+- Both local models successfully generated responses through the same Ollama service.
+- A model could be unloaded without deleting its model files from disk.
+- The model lifecycle was verified using Ollama's process-status API.
+- This confirms sequential model loading and unloading, not zero-downtime hot-swapping.
+- Simultaneous multi-model serving, memory pressure, and request behavior during a model switch were not tested.
+- FastAPI model switching and end-to-end OmniRoute integration still require separate validation.
+
+### Updated Evaluation Status
+
+Ollama has now been tested hands-on for CLI inference, model selection, FastAPI requests, and sequential model lifecycle operations. The evaluations of vLLM, LocalAI, and llama.cpp remain preliminary until equivalent hands-on tests are performed.
