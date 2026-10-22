@@ -367,3 +367,45 @@ Two requests were submitted concurrently through the same API.
 - These results do not demonstrate reliable hot-swapping, simultaneous multi-model serving, or zero-downtime switching.
 
 The FastAPI → OmniRoute → Ollama integration is operational. The remaining limitation is reliable Llama inference and multi-model operation in the current environment.
+
+## Retest Update — 2026-10-22 (Ollama Configuration Fix)
+
+### Configuration change
+
+Recreated the Ollama container while preserving the `ollama-models` volume and `llm-swap-net` network. Applied:
+
+- `OLLAMA_MAX_LOADED_MODELS=1`
+- `OLLAMA_NUM_PARALLEL=1`
+- `OLLAMA_KEEP_ALIVE=2m`
+
+Both configured models remained available through `/api/tags`.
+
+### Sequential model switching without manual unloading
+
+Four alternating requests were sent through FastAPI → OmniRoute → Ollama without manually stopping models between requests.
+
+| Request | Model | Result |
+|---|---|---|
+| 1 | Qwen 2.5 1.5B | PASS — HTTP 200, `SWITCH_QWEN_1_OK` |
+| 2 | Llama 3.2 | PASS — HTTP 200, `SWITCH_LLAMA_1_OK` |
+| 3 | Qwen 2.5 1.5B | PASS — HTTP 200, `SWITCH_QWEN_2_OK` |
+| 4 | Llama 3.2 | PASS — HTTP 200, `SWITCH_LLAMA_2_OK` |
+
+### Concurrent requests to different models
+
+Qwen and Llama requests were submitted concurrently through FastAPI.
+
+| Model | Result |
+|---|---|
+| Qwen 2.5 1.5B | PASS — HTTP 200, `CONCURRENT_QWEN_OK` |
+| Llama 3.2 | PASS — HTTP 200, `CONCURRENT_LLAMA_OK` |
+
+Both requests returned their expected response markers. Available host memory after the test was approximately 1.0 GiB, with 2.3 GiB of swap in use.
+
+### Interpretation
+
+- Sequential switching without explicit manual unloading passed all four requests after the Ollama configuration change.
+- Both different-model concurrent requests returned HTTP 200 in this test.
+- `OLLAMA_MAX_LOADED_MODELS=1` limits the number of models Ollama keeps loaded; the concurrent test does not establish that both models were resident in memory simultaneously.
+- These results do not establish zero-downtime hot-swapping, production-scale concurrency, or simultaneous multi-model residency.
+- Earlier `signal: killed` failures remain valid historical results. The configuration change improved the observed results, but the original failure's root cause has not been conclusively established.

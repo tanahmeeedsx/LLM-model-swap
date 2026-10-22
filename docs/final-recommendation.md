@@ -238,3 +238,19 @@ This document distinguishes current test evidence from preliminary research and 
 Retain Ollama as the hands-on evaluated local runtime and keep the FastAPI → OmniRoute integration. Treat sequential switching with explicit unloading as the demonstrated behavior. Do not claim reliable hot-swapping, zero-downtime switching, or simultaneous multi-model serving.
 
 The repeated Llama `signal: killed` error could be related to memory or other runtime resource constraints; the root cause remains unconfirmed. Further investigation should check available memory, container resource limits, and Ollama logs before drawing a definitive conclusion.
+
+## Retest Update — 2026-10-22 (Ollama Configuration Fix)
+
+The Ollama container was recreated with the existing `ollama-models` volume and `llm-swap-net` network preserved. The following settings were applied:
+
+- `OLLAMA_MAX_LOADED_MODELS=1`
+- `OLLAMA_NUM_PARALLEL=1`
+- `OLLAMA_KEEP_ALIVE=2m`
+
+Validation results after the change:
+
+- Four alternating Qwen/Llama requests passed without manually unloading models between requests.
+- Concurrent requests to Qwen and Llama both returned HTTP 200 with the expected response markers.
+- Host available memory after the concurrent test was approximately 1.0 GiB, with 2.3 GiB of swap in use.
+
+Ollama remains the recommended hands-on baseline for this prototype. The results support sequential model switching and a successful concurrent-request test in the current environment. They do not prove that both models remain loaded simultaneously, that switching is zero-downtime, or that the setup is production-ready. The earlier Llama `signal: killed` failures should remain documented as historical findings; their original root cause is not conclusively confirmed.
