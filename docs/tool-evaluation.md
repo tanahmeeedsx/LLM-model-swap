@@ -335,3 +335,12 @@ The Llama request failed because the Ollama `llama-server` process terminated wi
 ### Current Completion Status
 
 The Qwen end-to-end path, model listing, model selection, request validation, sequential requests, concurrent requests, and upstream error propagation have been tested successfully. Llama 3.2 3B runtime stability remains unresolved, so multi-model inference is not yet fully validated.
+
+## Retest Update — 2026-10-22
+
+- Qwen inference through FastAPI → OmniRoute → Ollama succeeded.
+- Llama inference through the same path succeeded once, then intermittently failed with `signal: killed`.
+- Qwen was unloaded using `ollama stop qwen2.5:1.5b`.
+- After Qwen was unloaded, both direct Llama inference and end-to-end API inference succeeded.
+
+**Interpretation:** Unloading Qwen correlated with successful Llama retesting. Memory pressure is a plausible cause, but the root cause remains unconfirmed. Zero-downtime hot-swapping, simultaneous multi-model serving, and reliable repeated switching remain unverified.

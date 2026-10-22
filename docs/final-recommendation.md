@@ -223,3 +223,7 @@ Ollama currently offers the simplest validated baseline for local model serving 
 The remaining work is to validate the unresolved model-switching and routing requirements, investigate Llama runtime stability, and decide whether alternative serving tools need hands-on testing before the final production recommendation.
 
 This document distinguishes current test evidence from preliminary research and should be updated as the remaining validation work is completed.
+
+## Retest Update — 2026-10-22
+
+Both Qwen and Llama returned successful responses through FastAPI → OmniRoute → Ollama. Llama also failed intermittently with `signal: killed`. After Qwen was unloaded, Llama direct inference and the end-to-end API request succeeded. This is consistent with possible memory pressure, but the root cause is unconfirmed. Zero-downtime switching, simultaneous multi-model serving, and repeated switching reliability remain unverified.
