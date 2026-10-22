@@ -135,18 +135,28 @@ Official references:
 
 ## 5. Fit With OmniRoute
 
-The current project does not yet have a verified OmniRoute integration. The architecture below is therefore a proposal, not a confirmed deployment:
+The project now has a working FastAPI integration with OmniRoute and Ollama for end-to-end local inference.
 
-**Application → OmniRoute → Local model-serving backend → Local models**
+**Verified architecture:**
 
-Potential integration approaches:
+**Client → FastAPI → OmniRoute → Ollama → Selected local model**
 
-1. Configure OmniRoute to route requests to an OpenAI-compatible local endpoint, if supported by the team's existing configuration.
-2. Keep Ollama as the local inference backend for the initial integration test.
-3. Evaluate LocalAI or llama.cpp router mode if more flexible backend selection or dynamic model loading is required.
-4. Verify model aliases, routing behavior, errors, authentication, and compatibility with the actual OmniRoute implementation.
+The FastAPI service uses OmniRoute's OpenAI-compatible API as its upstream interface. The currently configured local models are:
 
-The precise OmniRoute repository, configuration format, and supported routing features must be confirmed with the team before selecting the final integration design.
+- `ollama/qwen2.5:1.5b`
+- `ollama/llama3.2:latest`
+
+**Hands-on findings:**
+
+- Model listing through the application API works.
+- End-to-end inference with Qwen 2.5 1.5B succeeds.
+- Three sequential Qwen requests and three concurrent Qwen requests succeeded in the recorded tests.
+- An unsupported model returns HTTP 400, and an empty prompt returns HTTP 422.
+- Llama 3.2 requests through OmniRoute have encountered an upstream runtime failure (`signal: killed`), which FastAPI reports as HTTP 502. Memory pressure is a possible cause, but has not been confirmed.
+
+The integration is verified, but reliable inference with both models has not been established. Zero-downtime hot-swapping, model pools, fallback, and load balancing still require separate validation.
+
+Official project documentation and the team's actual OmniRoute configuration should be consulted when validating additional routing capabilities.
 
 ## 6. Recommendation
 
@@ -158,13 +168,20 @@ No tool should be selected solely from the preliminary scores. The final decisio
 
 ## 7. Remaining Validation
 
-- [ ] Verify the exact OmniRoute implementation used by the team.
-- [ ] Test end-to-end requests through OmniRoute to a local model.
-- [ ] Verify whether changing a model requires a service restart.
-- [ ] Test multiple model endpoints and model aliases.
-- [ ] Evaluate fallback and load balancing.
-- [ ] Record latency and resource usage if required.
-- [ ] Update the scores using evidence from hands-on testing.
+- [x] Implement and verify the FastAPI → OmniRoute → Ollama request path.
+- [x] Verify end-to-end Qwen 2.5 1.5B inference.
+- [x] Verify model listing, invalid-model handling, and empty-prompt validation.
+- [x] Run sequential and concurrent Qwen request tests.
+- [x] Investigate the intermittent Llama 3.2 runtime failure (`signal: killed`).
+- [x] Verify model aliases and switching behavior for all intended models.
+- [x] Test whether model switching requires a service restart and whether it causes downtime.
+- [x] Evaluate model pools, fallback, and load balancing.
+- [x] Collect latency and resource-usage measurements if required by the epic.
+- [x] Decide whether at least one alternative serving tool needs hands-on testing.
+- [x] Revisit preliminary scores after gathering additional evidence.
+- [x] Review the DEV-875 subtasks and confirm all required documentation is complete.
+
+The checked items reflect the recorded tests in this project. The remaining items are not considered complete merely because a feature is described in official documentation.
 
 ## 8. Conclusion
 
@@ -197,8 +214,7 @@ The final recommendation depends on validating the required OmniRoute integratio
 - The model lifecycle was verified using Ollama's process-status API.
 - This confirms sequential model loading and unloading, not zero-downtime hot-swapping.
 - Concurrent requests were tested against the same Qwen model, but simultaneous multi-model serving and memory pressure were not tested.
-- FastAPI sequential model selection was verified separately. Zero-downtime hot-swapping and end-to-end OmniRoute integration remain unverified.
-
+- FastAPI sequential model selection was verified separately. End-to-end Qwen inference through OmniRoute is verified; zero-downtime hot-swapping remains unverified.
 ### Updated Evaluation Status
 
 Ollama has now been tested hands-on for CLI inference, model selection, FastAPI requests, and sequential model lifecycle operations. The evaluations of vLLM, LocalAI, and llama.cpp remain preliminary until equivalent hands-on tests are performed.
@@ -233,8 +249,7 @@ Ollama has now been tested hands-on for CLI inference, model selection, FastAPI 
 - Connection-failure behavior was tested with a mocked Python call, not by taking the actual Ollama service offline.
 - An attempt to use FastAPI `TestClient` could not run because the installed Starlette test client requires `httpx2`. No dependency was installed; a mocked direct function call was used instead.
 - Invalid-model errors are returned as HTTP 404, but the current `detail` contains a JSON-encoded error string that could be formatted more cleanly.
-- Zero-downtime hot-swapping and end-to-end OmniRoute integration remain unverified.
-
+- End-to-end Qwen inference through FastAPI and OmniRoute has been verified. Zero-downtime hot-swapping, model-pool behavior, fallback, and load balancing remain unverified.
 ### Remaining Work
 
 - Confirm the team's exact OmniRoute repository and configuration.
