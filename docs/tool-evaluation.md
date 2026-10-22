@@ -338,9 +338,32 @@ The Qwen end-to-end path, model listing, model selection, request validation, se
 
 ## Retest Update — 2026-10-22
 
-- Qwen and Llama both returned successful responses through FastAPI → OmniRoute → Ollama.
-- In an additional controlled test, four sequential requests alternated between Qwen and Llama. Each request returned HTTP 200 and `SWITCH_TEST_OK`.
-- The test explicitly unloaded each selected model after its request using `ollama stop`.
-- Earlier tests recorded intermittent Llama `signal: killed` failures. Unloading Qwen also correlated with successful Llama retesting, but the root cause remains unconfirmed.
+### Sequential switching without explicit unloading
 
-**Interpretation:** Sequential model selection with explicit unloading passed this controlled test. This does not establish zero-downtime hot-swapping, simultaneous multi-model serving, or reliable switching without unloading.
+Four requests alternated between Qwen and Llama through FastAPI → OmniRoute → Ollama, without explicitly unloading models between requests.
+
+| Request | Model | Result |
+|---|---|---|
+| 1 | Qwen 2.5 1.5B | PASS — HTTP 200, `SWITCH_1_OK` |
+| 2 | Llama 3.2 | FAIL — HTTP 502; upstream `llama-server` terminated with `signal: killed` |
+| 3 | Qwen 2.5 1.5B | PASS — HTTP 200, `SWITCH_3_OK` |
+| 4 | Llama 3.2 | FAIL — HTTP 502; upstream `llama-server` terminated with `signal: killed` |
+
+### Concurrent requests to different models
+
+Two requests were submitted concurrently through the same API.
+
+| Model | Result |
+|---|---|
+| Qwen 2.5 1.5B | PASS — HTTP 200, `CONCURRENT_QWEN_OK` |
+| Llama 3.2 | FAIL — HTTP 502; upstream `llama-server` terminated with `signal: killed` |
+
+### Interpretation and status
+
+- Sequential model selection works for Qwen, but switching reliably between both models without unloading is **not validated**.
+- Concurrent requests to different models are **not validated successfully** because the Llama request failed.
+- Earlier tests with explicit model unloading succeeded for four alternating requests.
+- The repeated `signal: killed` error may be consistent with resource or memory pressure, but the root cause has not been confirmed.
+- These results do not demonstrate reliable hot-swapping, simultaneous multi-model serving, or zero-downtime switching.
+
+The FastAPI → OmniRoute → Ollama integration is operational. The remaining limitation is reliable Llama inference and multi-model operation in the current environment.
