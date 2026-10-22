@@ -154,7 +154,7 @@ The FastAPI service uses OmniRoute's OpenAI-compatible API as its upstream inter
 - An unsupported model returns HTTP 400, and an empty prompt returns HTTP 422.
 - Llama 3.2 requests through OmniRoute have encountered an upstream runtime failure (`signal: killed`), which FastAPI reports as HTTP 502. Memory pressure is a possible cause, but has not been confirmed.
 
-The integration is verified, but reliable inference with both models has not been established. Zero-downtime hot-swapping, model pools, fallback, and load balancing still require separate validation.
+End-to-end integration has been verified for both Qwen and Llama. Four sequential requests alternating between the models passed when each model was explicitly unloaded after its request. Earlier intermittent Llama `signal: killed` failures mean runtime stability is not yet established. Zero-downtime hot-swapping, model pools, fallback, and load balancing still require separate validation.
 
 Official project documentation and the team's actual OmniRoute configuration should be consulted when validating additional routing capabilities.
 
@@ -214,7 +214,7 @@ The final recommendation depends on validating the required OmniRoute integratio
 - The model lifecycle was verified using Ollama's process-status API.
 - This confirms sequential model loading and unloading, not zero-downtime hot-swapping.
 - Concurrent requests were tested against the same Qwen model, but simultaneous multi-model serving and memory pressure were not tested.
-- FastAPI sequential model selection was verified separately. End-to-end Qwen inference through OmniRoute is verified; zero-downtime hot-swapping remains unverified.
+- FastAPI sequential model selection and end-to-end inference through OmniRoute were verified for both Qwen and Llama. Four alternating requests passed with explicit model unloading; zero-downtime hot-swapping remains unverified.
 ### Updated Evaluation Status
 
 Ollama has now been tested hands-on for CLI inference, model selection, FastAPI requests, and sequential model lifecycle operations. The evaluations of vLLM, LocalAI, and llama.cpp remain preliminary until equivalent hands-on tests are performed.
@@ -249,7 +249,7 @@ Ollama has now been tested hands-on for CLI inference, model selection, FastAPI 
 - Connection-failure behavior was tested with a mocked Python call, not by taking the actual Ollama service offline.
 - An attempt to use FastAPI `TestClient` could not run because the installed Starlette test client requires `httpx2`. No dependency was installed; a mocked direct function call was used instead.
 - Invalid-model errors are returned as HTTP 404, but the current `detail` contains a JSON-encoded error string that could be formatted more cleanly.
-- End-to-end Qwen inference through FastAPI and OmniRoute has been verified. Zero-downtime hot-swapping, model-pool behavior, fallback, and load balancing remain unverified.
+- End-to-end Qwen and Llama inference through FastAPI and OmniRoute has been verified. Zero-downtime hot-swapping, model-pool behavior, fallback, and load balancing remain unverified.
 ### Remaining Work
 
 - Confirm the team's exact OmniRoute repository and configuration.
@@ -259,7 +259,7 @@ Ollama has now been tested hands-on for CLI inference, model selection, FastAPI 
 
 ### Validation Conclusion
 
-The Ollama baseline and FastAPI model-selection path were exercised with both available local models. Basic request validation, invalid-model handling, concurrent same-model requests, and simulated connection failure were also checked. These tests do not prove zero-downtime hot-swapping, simultaneous multi-model serving, or completed OmniRoute integration.
+The Ollama baseline and FastAPI model-selection path were exercised with both available local models. Basic request validation, invalid-model handling, concurrent same-model requests, and simulated connection failure were also checked. These tests do not prove zero-downtime hot-swapping, simultaneous multi-model serving, or reliable repeated switching.
 
 ## OmniRoute Integration and API Validation
 
@@ -310,7 +310,7 @@ Qwen 2.5 1.5B inference works through the complete API pipeline. Llama 3.2 3B is
 
 The Docker Desktop VM is configured with 3 GB memory and 1 GB swap. The host reports approximately 6.6 GiB total RAM, with memory and swap under pressure during troubleshooting. Memory pressure is a plausible cause, but an out-of-memory event has not been conclusively confirmed.
 
-For this reason, Qwen is the current validated model for end-to-end API testing. Llama runtime stability remains under investigation.
+Both Qwen and Llama have passed end-to-end API inference. However, Llama has also shown intermittent runtime failures, so its stability remains under investigation.
 
 ### Evaluation Summary
 
@@ -338,9 +338,9 @@ The Qwen end-to-end path, model listing, model selection, request validation, se
 
 ## Retest Update — 2026-10-22
 
-- Qwen inference through FastAPI → OmniRoute → Ollama succeeded.
-- Llama inference through the same path succeeded once, then intermittently failed with `signal: killed`.
-- Qwen was unloaded using `ollama stop qwen2.5:1.5b`.
-- After Qwen was unloaded, both direct Llama inference and end-to-end API inference succeeded.
+- Qwen and Llama both returned successful responses through FastAPI → OmniRoute → Ollama.
+- In an additional controlled test, four sequential requests alternated between Qwen and Llama. Each request returned HTTP 200 and `SWITCH_TEST_OK`.
+- The test explicitly unloaded each selected model after its request using `ollama stop`.
+- Earlier tests recorded intermittent Llama `signal: killed` failures. Unloading Qwen also correlated with successful Llama retesting, but the root cause remains unconfirmed.
 
-**Interpretation:** Unloading Qwen correlated with successful Llama retesting. Memory pressure is a plausible cause, but the root cause remains unconfirmed. Zero-downtime hot-swapping, simultaneous multi-model serving, and reliable repeated switching remain unverified.
+**Interpretation:** Sequential model selection with explicit unloading passed this controlled test. This does not establish zero-downtime hot-swapping, simultaneous multi-model serving, or reliable switching without unloading.

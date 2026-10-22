@@ -226,4 +226,6 @@ This document distinguishes current test evidence from preliminary research and 
 
 ## Retest Update — 2026-10-22
 
-Both Qwen and Llama returned successful responses through FastAPI → OmniRoute → Ollama. Llama also failed intermittently with `signal: killed`. After Qwen was unloaded, Llama direct inference and the end-to-end API request succeeded. This is consistent with possible memory pressure, but the root cause is unconfirmed. Zero-downtime switching, simultaneous multi-model serving, and repeated switching reliability remain unverified.
+Both Qwen and Llama returned successful responses through FastAPI → OmniRoute → Ollama. In a controlled test, four sequential requests alternated between the models; all returned HTTP 200 and `SWITCH_TEST_OK` when each model was explicitly unloaded after its request. Earlier intermittent Llama `signal: killed` failures remain part of the findings. Memory pressure is a plausible explanation, not a confirmed root cause.
+
+**Conclusion:** Sequential model selection with explicit unloading passed. Zero-downtime hot-swapping, simultaneous multi-model serving, and reliable repeated switching without unloading remain unverified.
