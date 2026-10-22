@@ -300,3 +300,23 @@ For this reason, Qwen is the current validated model for end-to-end API testing.
 ### Evaluation Summary
 
 The integration demonstrates a common API layer for multiple locally hosted models, model selection through request parameters, request validation, and routing through OmniRoute. Further work includes investigating Llama runtime stability, testing model switching repeatedly, and documenting concurrency and failure-handling behavior.
+
+### Additional End-to-End Tests
+
+| Test | Result |
+|---|---|
+| Select Qwen through `POST /generate` | Passed |
+| Three sequential Qwen generation requests | Passed |
+| Three concurrent Qwen generation requests | Passed |
+| Select Llama through `POST /generate` | Failed: upstream inference returned HTTP 500 |
+| FastAPI handling of Llama upstream failure | Returned HTTP 502 |
+
+Sequential requests returned their expected markers: `REPEAT_OK_1`, `REPEAT_OK_2`, and `REPEAT_OK_3`.
+
+Concurrent requests returned their respective expected markers: `CONCURRENT_OK_1`, `CONCURRENT_OK_2`, and `CONCURRENT_OK_3`. All three completed successfully in the test run.
+
+The Llama request failed because the Ollama `llama-server` process terminated with `signal: killed`. FastAPI surfaced this upstream failure as HTTP 502. The exact cause remains unconfirmed; Docker Desktop memory pressure is a plausible contributor.
+
+### Current Completion Status
+
+The Qwen end-to-end path, model listing, model selection, request validation, sequential requests, concurrent requests, and upstream error propagation have been tested successfully. Llama 3.2 3B runtime stability remains unresolved, so multi-model inference is not yet fully validated.
