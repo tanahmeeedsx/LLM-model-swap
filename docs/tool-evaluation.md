@@ -245,3 +245,58 @@ Ollama has now been tested hands-on for CLI inference, model selection, FastAPI 
 ### Validation Conclusion
 
 The Ollama baseline and FastAPI model-selection path were exercised with both available local models. Basic request validation, invalid-model handling, concurrent same-model requests, and simulated connection failure were also checked. These tests do not prove zero-downtime hot-swapping, simultaneous multi-model serving, or completed OmniRoute integration.
+
+## OmniRoute Integration and API Validation
+
+### Architecture
+
+The local orchestration API uses FastAPI to send requests through OmniRoute's OpenAI-compatible API to locally hosted Ollama models.
+
+Request flow:
+
+`Client → FastAPI → OmniRoute → Ollama → Selected Model`
+
+OmniRoute provides a unified API endpoint for selecting and routing requests to supported models.
+
+### Configuration
+
+- **FastAPI endpoint:** `http://127.0.0.1:8000`
+- **OmniRoute base URL:** `http://127.0.0.1:20128/v1`
+- **Ollama models configured:**
+  - `ollama/qwen2.5:1.5b`
+  - `ollama/llama3.2:latest`
+- **Model generation endpoint:** `POST /generate`
+- **Model listing endpoint:** `GET /models`
+- **Health endpoint:** `GET /health`
+
+The API uses an environment variable named `OMNIROUTE_API_KEY` for authentication. API keys should remain in environment variables and must not be committed to version control.
+
+### API Validation Results
+
+| Test | Expected result | Observed result |
+|---|---|---|
+| Qwen text generation through FastAPI and OmniRoute | Successful response | Passed |
+| Unsupported model selection | HTTP 400 | Passed |
+| Empty prompt validation | HTTP 422 | Passed |
+| Model listing | Return supported configured models | Passed |
+| Health endpoint | Return service status | Passed previously |
+
+Successful Qwen test response:
+
+`{"model":"qwen2.5:1.5b","response":"Qwen orchestration works."}`
+
+Unsupported model requests are rejected before being forwarded to OmniRoute. Empty prompts are rejected by Pydantic request validation.
+
+### Model Runtime Limitation
+
+Qwen 2.5 1.5B inference works through the complete API pipeline. Llama 3.2 3B is configured in OmniRoute, but inference has intermittently failed with:
+
+`llama-server process has terminated: signal: killed`
+
+The Docker Desktop VM is configured with 3 GB memory and 1 GB swap. The host reports approximately 6.6 GiB total RAM, with memory and swap under pressure during troubleshooting. Memory pressure is a plausible cause, but an out-of-memory event has not been conclusively confirmed.
+
+For this reason, Qwen is the current validated model for end-to-end API testing. Llama runtime stability remains under investigation.
+
+### Evaluation Summary
+
+The integration demonstrates a common API layer for multiple locally hosted models, model selection through request parameters, request validation, and routing through OmniRoute. Further work includes investigating Llama runtime stability, testing model switching repeatedly, and documenting concurrency and failure-handling behavior.
